@@ -19,6 +19,14 @@ func ReduceReader[A any](r io.Reader, initial A, fn func(acc A, line string) A) 
 	return acc
 }
 
+func Reduce[A any, E any](es []E, initial A, fn func(acc A, elem E) A) A {
+	acc := initial
+	for _, e := range es {
+		acc = fn(acc, e)
+	}
+	return acc
+}
+
 func Map[A, B any](as []A, fn func(a A) B) []B {
 	bs := make([]B, len(as))
 	for i, a := range as {
@@ -37,4 +45,15 @@ func Sum[T addable](ns []T) T {
 		sum += n
 	}
 	return sum
+}
+
+func Map2Func[K comparable, E any](m map[K]E) func(K) E {
+	return func(k K) E { return m[k] }
+}
+
+func Slice2Set[T comparable](ts []T) map[T]bool {
+	return Reduce(ts, make(map[T]bool), func(m map[T]bool, t T) map[T]bool {
+		m[t] = true
+		return m
+	})
 }
