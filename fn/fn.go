@@ -57,3 +57,13 @@ func Slice2Set[T comparable](ts []T) map[T]bool {
 		return m
 	})
 }
+
+func Count[T any](ts []T, fn func(T) bool) int {
+	var acc int
+	for _, t := range ts {
+		if fn(t) {
+			acc++
+		}
+	}
+	return acc
+}
