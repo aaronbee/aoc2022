@@ -67,3 +67,9 @@ func Count[T any](ts []T, fn func(T) bool) int {
 	}
 	return acc
 }
+
+func Reverse[T any](ts []T) {
+	for b, e := 0, len(ts)-1; b < e; b, e = b+1, e-1 {
+		ts[b], ts[e] = ts[e], ts[b]
+	}
+}
