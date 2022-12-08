@@ -47,6 +47,18 @@ func Sum[T addable](ns []T) T {
 	return sum
 }
 
+func Max[T constraints.Integer](ns []T) T {
+	if len(ns) == 0 {
+		return 0
+	}
+	return Reduce(ns[1:], ns[0], func(acc T, n T) T {
+		if n > acc {
+			return n
+		}
+		return acc
+	})
+}
+
 func Map2Func[K comparable, E any](m map[K]E) func(K) E {
 	return func(k K) E { return m[k] }
 }
