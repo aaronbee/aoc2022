@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"golang.org/x/exp/constraints"
+	"golang.org/x/exp/slices"
 )
 
 func ReduceReader[A any](r io.Reader, initial A, fn func(acc A, line string) A) A {
@@ -84,4 +85,9 @@ func Reverse[T any](ts []T) {
 	for b, e := 0, len(ts)-1; b < e; b, e = b+1, e-1 {
 		ts[b], ts[e] = ts[e], ts[b]
 	}
+}
+
+func TopN[T constraints.Ordered](ts []T, n int) []T {
+	slices.Sort(ts)
+	return ts[len(ts)-n:]
 }
