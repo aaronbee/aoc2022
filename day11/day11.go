@@ -20,30 +20,19 @@ type monkey struct {
 	count int
 }
 
-func (m *monkey) String() string {
-	return fmt.Sprintf(`{
-  items: %v
-  test:  %d
-  true:  %d
-  false: %d
-  count: %d
-}
-`, m.items, m.test, m.t, m.f, m.count)
-}
-
 func (m *monkey) clone() *monkey {
 	mm := *m
 	mm.items = append([]int(nil), m.items...)
 	return &mm
 }
 
-func runRound(ms []*monkey, div3 bool) {
+func runRound(ms []*monkey, div3 bool, mod int) {
 	for _, m := range ms {
 		for _, it := range m.items {
 			m.count++
-			n := m.op(it)
+			n := m.op(it) % mod // prevent overflow with '% mod'
 			if n < 0 {
-				panic("overflow")
+				panic(fmt.Errorf("overflow: Before: %d after: %d", it, n))
 			}
 			if div3 {
 				n /= 3
@@ -118,26 +107,20 @@ func splitMonkey(data []byte, atEOF bool) (advance int, token []byte, err error)
 	return i + 2, data[:i], nil
 }
 
-func part1(ms []*monkey) int {
+func part1(ms []*monkey, mod int) int {
 	for i := 0; i < 20; i++ {
-		runRound(ms, true)
+		runRound(ms, true, mod)
 	}
-
 	counts := fn.Map(ms, func(m *monkey) int { return m.count })
 	top2 := fn.TopN(counts, 2)
 	return top2[0] * top2[1]
 }
 
-func part2(ms []*monkey) int {
-	var i int
-	for _, j := range []int{1, 20, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000} {
-		for ; i < j; i++ {
-			runRound(ms, false)
-		}
-		fmt.Printf("Iter: %d Counts: %v\n", i, fn.Map(ms, func(m *monkey) int { return m.count }))
+func part2(ms []*monkey, mod int) int {
+	for i := 0; i < 10000; i++ {
+		runRound(ms, false, mod)
 	}
 	counts := fn.Map(ms, func(m *monkey) int { return m.count })
-	fmt.Println("Part2 counts:", counts)
 	top2 := fn.TopN(counts, 2)
 	return top2[0] * top2[1]
 }
@@ -157,6 +140,8 @@ func main() {
 	if s.Err() != nil {
 		panic(s.Err())
 	}
-	fmt.Println("Part 1:", part1(fn.Map(ms, func(m *monkey) *monkey { return m.clone() })))
-	fmt.Println("Part 2:", part2(ms))
+	// For all values of n and m.test: n % m.test == (n % mod) % m.test
+	mod := fn.Reduce(ms, 1, func(acc int, m *monkey) int { return acc * m.test })
+	fmt.Println("Part 1:", part1(fn.Map(ms, func(m *monkey) *monkey { return m.clone() }), mod))
+	fmt.Println("Part 2:", part2(ms, mod))
 }
