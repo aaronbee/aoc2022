@@ -87,24 +87,24 @@ func max(x, y int) int {
 
 func (c *cave) insert(p point, b byte) {
 	c.m[p] = b
-	c.minX = min(c.minX, p.x)
-	c.maxX = max(c.maxX, p.x)
 	if c.floor == 0 {
+		c.minX = min(c.minX, p.x)
+		c.maxX = max(c.maxX, p.x)
 		c.maxY = max(c.maxY, p.y)
 	}
 }
 
 func (c *cave) setFloor() {
-	c.floor = c.maxY + 1
+	c.floor = c.maxY + 2
 }
 
 func (c *cave) String() string {
 	width := 3 + c.maxX - c.minX
 	offset := -c.minX + 1
-	depth := 3 + c.maxY
+	depth := c.floor + 1
 	buf := make([][]byte, depth)
 	for i := range buf {
-		if i == depth-1 {
+		if i == c.floor {
 			buf[i] = bytes.Repeat([]byte{rock}, width)
 			continue
 		}
@@ -112,48 +112,64 @@ func (c *cave) String() string {
 	}
 	buf[0][500+offset] = 'S'
 	for p, b := range c.m {
-		buf[p.y][p.x+offset] = b
+		x := p.x + offset
+		if 0 <= x && x < width {
+			buf[p.y][x] = b
+		}
 	}
 	return string(bytes.Join(buf, []byte{'\n'}))
 }
 
-func (c *cave) dropSandOneStep(s point) point {
-	if s.y == c.maxY+1 {
-		return s
-	}
-	for _, next := range []point{s.add(point{0, 1}), s.add(point{-1, 1}), s.add(point{1, 1})} {
-		if _, ok := c.m[next]; !ok {
-			return next
+func (c *cave) dropSandGrain(s point) point {
+	for {
+		if s.y == c.floor-1 {
+			break
 		}
+		next := s.add(point{0, 1})
+		if _, ok := c.m[next]; !ok {
+			s = next
+			continue
+		}
+		next = s.add(point{-1, 1})
+		if _, ok := c.m[next]; !ok {
+			s = next
+			continue
+		}
+		next = s.add(point{1, 1})
+		if _, ok := c.m[next]; !ok {
+			s = next
+			continue
+		}
+		break
 	}
+	c.insert(s, sand)
 	return s
 }
 
-func (c *cave) dropSand(stop func(s point) bool) bool {
-	s := c.dropSandOneStep(point{500, 0})
-	for !stop(s) {
-		next := c.dropSandOneStep(s)
-		if next == s {
-			c.insert(next, sand)
-			return true
-		}
-		s = next
-	}
-	return false
-}
-
 func part1(c *cave) int {
-	i := 0
-	for ; c.dropSand(func(s point) bool { return s.y >= c.maxY }); i++ {
+	count := 0
+	start := point{500, 0}
+	for {
+		grain := c.dropSandGrain(start)
+		count++
+		if grain.y >= c.maxY {
+			break
+		}
 	}
-	return i
+	return count
 }
 
 func part2(c *cave) int {
-	i := 0
-	for ; c.dropSand(func(s point) bool { return s == point{500, 0} }); i++ {
+	count := 0
+	start := point{500, 0}
+	for {
+		grain := c.dropSandGrain(start)
+		count++
+		if grain == start {
+			break
+		}
 	}
-	return i + 1
+	return count
 }
 
 func main() {
@@ -174,6 +190,6 @@ func main() {
 	})
 	c.setFloor()
 	count := part1(c)
-	fmt.Println("Part 1:", count)
+	fmt.Println("Part 1:", count-1) // don't count the grain that fell to the floor
 	fmt.Println("Part 2:", count+part2(c))
 }
