@@ -99,11 +99,31 @@ func part1(ss []sensor, yCoord int) int {
 			overlap[s.beac.x] = struct{}{}
 		}
 	}
-	fmt.Println(is)
 	return is.sum() - len(overlap)
 }
 
 func part2(ss []sensor, maxC int) int {
+	for y := 0; y <= maxC; y++ {
+		var is intervals
+		for _, s := range ss {
+			if i, ok := s.intersectionInterval(y); ok {
+				if i.beg > maxC || i.end < 0 {
+					continue
+				}
+				if i.beg < 0 {
+					i.beg = 0
+				}
+				if i.end > maxC {
+					i.end = maxC
+				}
+				is.add(i)
+			}
+		}
+		if len(is.is) == 2 {
+			x := is.is[0].end + 1
+			return x*4000000 + y
+		}
+	}
 	return 0
 }
 
