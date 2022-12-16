@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/aaronbee/aoc2022/fn"
+	"golang.org/x/exp/slices"
 )
 
 type point struct{ x, y int }
@@ -21,36 +22,85 @@ func dist(a, b point) int {
 	return abs(a.x-b.x) + abs(a.y-b.y)
 }
 
+type interval struct{ beg, end int }
+
+type intervals struct {
+	is []interval
+}
+
+func (is *intervals) add(r interval) {
+	if len(is.is) == 0 {
+		is.is = append(is.is, r)
+		return
+	}
+	pos, found := slices.BinarySearchFunc(is.is, r, func(a, b interval) int { return a.beg - b.beg })
+	var cur *interval
+
+	if found {
+		cur = &is.is[pos]
+		if cur.end < r.end {
+			cur.end = r.end
+		} else {
+			return
+		}
+	} else {
+		is.is = slices.Insert(is.is, pos, r)
+		if pos > 0 {
+			pos--
+		}
+		cur = &is.is[pos]
+	}
+
+	var toRemove int
+	for i := pos + 1; i < len(is.is); i++ {
+		next := is.is[i]
+		if cur.end+1 < next.beg {
+			break
+		}
+		toRemove++
+		if cur.end < next.end {
+			cur.end = next.end
+		}
+	}
+	is.is = slices.Delete(is.is, pos+1, pos+1+toRemove)
+}
+
+func (is intervals) sum() int {
+	return fn.Reduce(is.is, 0, func(acc int, i interval) int {
+		return acc + i.end - i.beg + 1
+	})
+}
+
 type sensor struct {
 	loc  point
 	beac point
 }
 
-func (s sensor) intersection(yCoord int, m map[int]struct{}) {
+func (s sensor) intersectionInterval(yCoord int) (interval, bool) {
 	d := dist(s.loc, s.beac)
 	distToLine := abs(yCoord - s.loc.y)
-	leftOver := d - distToLine + 1
+	leftOver := d - distToLine
 	if leftOver < 0 {
-		return
+		return interval{}, false
 	}
-	m[s.loc.x] = struct{}{}
-	for i := 0; i < leftOver; i++ {
-		m[s.loc.x-i] = struct{}{}
-		m[s.loc.x+i] = struct{}{}
-	}
+	return interval{s.loc.x - leftOver, s.loc.x + leftOver}, true
 }
 
 func part1(ss []sensor, yCoord int) int {
-	intersects := make(map[int]struct{})
+	var is intervals
 	for _, s := range ss {
-		s.intersection(yCoord, intersects)
-	}
-	for _, s := range ss {
-		if s.beac.y == yCoord {
-			delete(intersects, s.beac.x)
+		if i, ok := s.intersectionInterval(yCoord); ok {
+			is.add(i)
 		}
 	}
-	return len(intersects)
+	overlap := map[int]struct{}{}
+	for _, s := range ss {
+		if s.beac.y == yCoord {
+			overlap[s.beac.x] = struct{}{}
+		}
+	}
+	fmt.Println(is)
+	return is.sum() - len(overlap)
 }
 
 func part2(ss []sensor, maxC int) int {
