@@ -66,15 +66,16 @@ func shortestPaths(g map[string]*valve, nonzeroValves map[*valve]struct{}) map[*
 type action struct {
 	v        *valve
 	timeleft int
+	who      string
 }
 
-func maxRelease(shortestPaths map[*valve]map[*valve]int, on []*valve, v *valve, timeleft int) (int, []action) {
+func maxRelease(shortestPaths map[*valve]map[*valve]int, on []*valve, v *valve, timeleft int, who string) (int, []action) {
 	var myRelease int
 	var myActions []action
 	if v.rate > 0 {
 		timeleft-- // time to turn on
 		myRelease = v.rate * timeleft
-		myActions = []action{{v, timeleft}}
+		myActions = []action{{v, timeleft, who}}
 	}
 	best := myRelease
 	actions := myActions
@@ -89,7 +90,7 @@ func maxRelease(shortestPaths map[*valve]map[*valve]int, on []*valve, v *valve, 
 		if slices.Contains(on, next) {
 			continue
 		}
-		release, acts := maxRelease(shortestPaths, append(on, next), next, timeleft-cost)
+		release, acts := maxRelease(shortestPaths, append(on, next), next, timeleft-cost, who)
 		totalRelease := myRelease + release
 		if totalRelease > best {
 			best = totalRelease
@@ -100,14 +101,28 @@ func maxRelease(shortestPaths map[*valve]map[*valve]int, on []*valve, v *valve, 
 	return best, actions
 }
 
-func part1(vs map[string]*valve, nonzeroValves map[*valve]struct{}) int {
-	sps := shortestPaths(vs, nonzeroValves)
-	rate, actions := maxRelease(sps, nil, vs["AA"], 30)
+func part1(vs map[string]*valve, sps map[*valve]map[*valve]int, nonzeroValves map[*valve]struct{}) int {
+	rate, actions := maxRelease(sps, nil, vs["AA"], 30, "me")
 	fn.Reverse(actions)
 	for _, a := range actions {
 		fmt.Printf("At time %d turn on %s at rate %d for total %d\n", 30-a.timeleft, a.v.name, a.v.rate, a.timeleft*a.v.rate)
 	}
 	return rate
+}
+
+func part2(vs map[string]*valve, sps map[*valve]map[*valve]int, nonzeroValves map[*valve]struct{}) int {
+	// just run the part1 twice essentially. Based on a tip from reddit.
+	// This works for the input data, but doesn't work on the sample data.
+	myRate, myActions := maxRelease(sps, nil, vs["AA"], 26, "me")
+	seen := fn.Map(myActions, func(a action) *valve { return a.v })
+	elRate, elActions := maxRelease(sps, seen, vs["AA"], 26, "elephant")
+	actions := append(myActions, elActions...)
+	slices.SortFunc(actions, func(a, b action) bool { return a.timeleft > b.timeleft })
+	for _, a := range actions {
+		fmt.Printf("At time %d %s turns on %s at rate %d for total %d\n",
+			26-a.timeleft, a.who, a.v.name, a.v.rate, a.timeleft*a.v.rate)
+	}
+	return myRate + elRate
 }
 
 func main() {
@@ -151,6 +166,8 @@ func main() {
 			nonzeroValves[v] = struct{}{}
 		}
 	}
+	sps := shortestPaths(vs, nonzeroValves)
 
-	fmt.Println("Part 1:", part1(vs, nonzeroValves))
+	fmt.Println("Part 1:", part1(vs, sps, nonzeroValves))
+	fmt.Println("Part 2:", part2(vs, sps, nonzeroValves))
 }
